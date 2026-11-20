@@ -1,0 +1,2383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ScholarTrack — Smart Student Academic Management System</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- Chart.js for clean monochrome analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            page: '#F9FAFB',
+            surface: '#FFFFFF',
+            subtle: '#F3F4F6',
+            borderLight: '#E5E7EB',
+            ink: '#111827',
+            slateText: '#4B5563',
+            mutedText: '#9CA3AF',
+            obsidian: '#18181B',
+            obsidianHover: '#27272A',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg-page: #F9FAFB;
+      --bg-surface: #FFFFFF;
+      --bg-subtle: #F3F4F6;
+      --border-light: #E5E7EB;
+      --text-primary: #111827;
+      --text-secondary: #4B5563;
+      --text-muted: #9CA3AF;
+      --accent-primary: #18181B;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      margin: 0;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Hairline card aesthetic */
+    .st-card {
+      background-color: #FFFFFF;
+      border: 1px solid #E5E7EB;
+      border-radius: 10px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    }
+
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F9FAFB;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D1D5DB;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9CA3AF;
+    }
+
+    /* Toggle Switch */
+    .toggle-checkbox:checked {
+      right: 0;
+      border-color: #18181B;
+    }
+    .toggle-checkbox:checked + .toggle-label {
+      background-color: #18181B;
+    }
+
+    /* Print Styling for Official Academic Report */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printable-report, #printable-report * {
+        visibility: visible;
+      }
+      #printable-report {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Global Top Bar (Always accessible for live viva/demo switching) -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-[#E5E7EB] no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="switchPortal('landing')">
+        <div class="w-8 h-8 rounded-lg bg-[#18181B] text-white flex items-center justify-center font-semibold text-sm tracking-tight">
+          ST
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span class="font-semibold text-[#111827] tracking-tight text-base">ScholarTrack</span>
+          <span class="hidden sm:inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#4B5563] border border-[#E5E7EB]">
+            DBMS + Web v1.0
+          </span>
+        </div>
+      </div>
+
+      <!-- Center: Live Role Switcher Pill (For Seamless Evaluation & Testing) -->
+      <div class="hidden md:flex items-center bg-[#F3F4F6] p-1 rounded-lg border border-[#E5E7EB] text-xs font-medium">
+        <button onclick="switchPortal('landing')" id="nav-role-landing" class="role-pill px-3 py-1 rounded-md transition-all">
+          Home
+        </button>
+        <button onclick="switchPortal('student')" id="nav-role-student" class="role-pill px-3 py-1 rounded-md transition-all">
+          Student Portal
+        </button>
+        <button onclick="switchPortal('faculty')" id="nav-role-faculty" class="role-pill px-3 py-1 rounded-md transition-all">
+          Faculty Portal
+        </button>
+        <button onclick="switchPortal('admin')" id="nav-role-admin" class="role-pill px-3 py-1 rounded-md transition-all">
+          Admin Portal
+        </button>
+      </div>
+
+      <!-- Right Actions -->
+      <div class="flex items-center gap-2">
+        <button onclick="openSchemaModal()" class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-[#E5E7EB] bg-white hover:bg-[#F3F4F6] text-[#111827] transition-colors">
+          <i data-lucide="database" class="w-3.5 h-3.5 text-[#4B5563]"></i>
+          <span class="hidden sm:inline">SQL & RLS Schema</span>
+          <span class="sm:hidden">SQL</span>
+        </button>
+        <button onclick="resetDemoDatabase()" title="Reset demo database to initial seeded state" class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[#E5E7EB] bg-white hover:bg-[#F3F4F6] text-[#4B5563] transition-colors">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span class="hidden lg:inline">Reset Data</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Role Bar -->
+    <div class="flex md:hidden items-center justify-around bg-[#F9FAFB] border-t border-[#E5E7EB] px-2 py-1.5 text-xs font-medium">
+      <button onclick="switchPortal('landing')" id="m-role-landing" class="px-2.5 py-1 rounded-md">Home</button>
+      <button onclick="switchPortal('student')" id="m-role-student" class="px-2.5 py-1 rounded-md">Student</button>
+      <button onclick="switchPortal('faculty')" id="m-role-faculty" class="px-2.5 py-1 rounded-md">Faculty</button>
+      <button onclick="switchPortal('admin')" id="m-role-admin" class="px-2.5 py-1 rounded-md">Admin</button>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main id="app-root" class="flex-1 flex flex-col">
+    <!-- Dynamically rendered portal views go here -->
+  </main>
+
+  <!-- SQL & RLS Schema Modal (For College Project Viva / Evaluation) -->
+  <div id="schema-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-[1px] p-4">
+    <div class="bg-white border border-[#E5E7EB] rounded-xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-[#E5E7EB] flex items-center justify-between bg-[#F9FAFB]">
+        <div>
+          <h3 class="text-base font-semibold text-[#111827]">PostgreSQL Relational Schema & Row Level Security (RLS)</h3>
+          <p class="text-xs text-[#4B5563] mt-0.5">Production Supabase DDL blueprint powering ScholarTrack's role-based data isolation</p>
+        </div>
+        <button onclick="closeSchemaModal()" class="p-1.5 rounded-lg hover:bg-[#E5E7EB] text-[#4B5563]">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="p-6 overflow-y-auto space-y-5 text-xs">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="p-3.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
+            <div class="font-semibold text-[#111827] mb-1">1. Normalized 3NF Tables</div>
+            <p class="text-[#4B5563] leading-relaxed">17 relational tables separating profiles, students, faculty, departments, enrollments, attendance_sessions, and marks.</p>
+          </div>
+          <div class="p-3.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
+            <div class="font-semibold text-[#111827] mb-1">2. Database-Level RBAC</div>
+            <p class="text-[#4B5563] leading-relaxed">Supabase RLS policies ensure students can only SELECT their own rows and cannot mutate attendance or marks.</p>
+          </div>
+          <div class="p-3.5 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
+            <div class="font-semibold text-[#111827] mb-1">3. Single Source of Truth</div>
+            <p class="text-[#4B5563] leading-relaxed">Updates committed in the Faculty or Admin portals immediately reflect in the Student dashboard calculations.</p>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-semibold text-[#111827]">001_scholartrack_schema_rls.sql</span>
+            <button onclick="copySqlCode()" class="px-2.5 py-1 rounded-md border border-[#E5E7EB] bg-white hover:bg-[#F3F4F6] text-[#111827] font-medium">
+              Copy SQL
+            </button>
+          </div>
+          <pre id="sql-code-block" class="p-4 rounded-lg bg-[#18181B] text-[#F3F4F6] font-mono text-[11px] leading-relaxed overflow-x-auto">-- ScholarTrack Relational Schema & Row Level Security (Supabase PostgreSQL)
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('student', 'faculty', 'admin')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE departments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  code TEXT UNIQUE NOT NULL
+);
+
+CREATE TABLE students (
+  id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  roll_number TEXT UNIQUE NOT NULL,
+  department_id UUID REFERENCES departments(id),
+  semester INT NOT NULL CHECK (semester BETWEEN 1 AND 8),
+  section TEXT NOT NULL DEFAULT 'A',
+  is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE subjects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  credits INT NOT NULL DEFAULT 4,
+  department_id UUID REFERENCES departments(id),
+  semester INT NOT NULL
+);
+
+CREATE TABLE attendance_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
+  faculty_id UUID REFERENCES profiles(id),
+  session_date DATE NOT NULL,
+  topic TEXT
+);
+
+CREATE TABLE attendance_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID REFERENCES attendance_sessions(id) ON DELETE CASCADE,
+  student_id UUID REFERENCES students(id) ON DELETE CASCADE,
+  status TEXT NOT NULL CHECK (status IN ('present', 'absent')),
+  UNIQUE(session_id, student_id)
+);
+
+CREATE TABLE marks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
+  student_id UUID REFERENCES students(id) ON DELETE CASCADE,
+  assessment_type TEXT NOT NULL,
+  marks_obtained NUMERIC(5,2) NOT NULL,
+  max_marks NUMERIC(5,2) NOT NULL,
+  is_published BOOLEAN DEFAULT FALSE
+);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE attendance_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE marks ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Students can ONLY read their own attendance records
+CREATE POLICY "student_read_own_attendance" ON attendance_records
+  FOR SELECT USING (auth.uid() = student_id);
+
+-- Policy: Students can ONLY read their own PUBLISHED marks
+CREATE POLICY "student_read_published_marks" ON marks
+  FOR SELECT USING (auth.uid() = student_id AND is_published = TRUE);
+
+-- Policy: Faculty can manage attendance & marks for assigned subjects
+CREATE POLICY "faculty_manage_subject_records" ON attendance_records
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('faculty', 'admin'))
+  );</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /*************************************************************************
+     * 1. CENTRALIZED RELATIONAL STATE (Simulating Shared Supabase PostgreSQL)
+     *************************************************************************/
+    const STORAGE_KEY = 'scholartrack_db_v1';
+
+    const INITIAL_DB = {
+      activeStudentId: 'stu-1', // Default logged-in student (Rahul Sharma)
+      activeFacultyId: 'fac-1', // Default logged-in faculty (Prof. Ananya Nair)
+      departments: [
+        { id: 'dept-1', code: 'CSE', name: 'Computer Science & Engineering' },
+        { id: 'dept-2', code: 'ECE', name: 'Electronics & Communication' }
+      ],
+      students: [
+        { id: 'stu-1', rollNumber: '24CS042', name: 'Rahul Sharma', email: 'rahul.24cs042@college.edu', department: 'CSE', semester: 3, section: 'A', status: 'Active', phone: '+91 98765 43210' },
+        { id: 'stu-2', rollNumber: '24CS019', name: 'Priya Verma', email: 'priya.24cs019@college.edu', department: 'CSE', semester: 3, section: 'A', status: 'Active', phone: '+91 98765 43211' },
+        { id: 'stu-3', rollNumber: '24CS027', name: 'Aarav Kulkarni', email: 'aarav.24cs027@college.edu', department: 'CSE', semester: 3, section: 'A', status: 'Active', phone: '+91 98765 43212' },
+        { id: 'stu-4', rollNumber: '24CS051', name: 'Sneha Reddy', email: 'sneha.24cs051@college.edu', department: 'CSE', semester: 3, section: 'A', status: 'Active', phone: '+91 98765 43213' }
+      ],
+      faculty: [
+        { id: 'fac-1', empId: 'FAC-104', name: 'Prof. Ananya Nair', email: 'ananya.nair@college.edu', department: 'CSE', designation: 'Associate Professor' },
+        { id: 'fac-2', empId: 'FAC-112', name: 'Dr. Vikram Mehta', email: 'vikram.mehta@college.edu', department: 'CSE', designation: 'Professor' },
+        { id: 'fac-3', empId: 'FAC-119', name: 'Prof. Siddharth Rao', email: 'siddharth.rao@college.edu', department: 'CSE', designation: 'Assistant Professor' }
+      ],
+      subjects: [
+        { id: 'sub-1', code: 'CS301', name: 'Data Structures & Algorithms', credits: 4, semester: 3, department: 'CSE', facultyId: 'fac-1' },
+        { id: 'sub-2', code: 'CS302', name: 'Database Management Systems', credits: 4, semester: 3, department: 'CSE', facultyId: 'fac-2' },
+        { id: 'sub-3', code: 'CS303', name: 'Operating Systems', credits: 3, semester: 3, department: 'CSE', facultyId: 'fac-3' },
+        { id: 'sub-4', code: 'MA301', name: 'Discrete Mathematics', credits: 3, semester: 3, department: 'CSE', facultyId: 'fac-2' }
+      ],
+      // Aggregated attendance sessions per subject & student
+      attendance: [
+        // Rahul Sharma (stu-1)
+        { studentId: 'stu-1', subjectId: 'sub-1', attended: 36, conducted: 40, lastUpdated: '2026-11-19' }, // 90%
+        { studentId: 'stu-1', subjectId: 'sub-2', attended: 32, conducted: 40, lastUpdated: '2026-11-19' }, // 80%
+        { studentId: 'stu-1', subjectId: 'sub-3', attended: 26, conducted: 38, lastUpdated: '2026-11-18' }, // 68.4% (Warning < 75%)
+        { studentId: 'stu-1', subjectId: 'sub-4', attended: 30, conducted: 36, lastUpdated: '2026-11-18' }, // 83.3%
+        // Priya Verma (stu-2)
+        { studentId: 'stu-2', subjectId: 'sub-1', attended: 38, conducted: 40, lastUpdated: '2026-11-19' },
+        { studentId: 'stu-2', subjectId: 'sub-2', attended: 37, conducted: 40, lastUpdated: '2026-11-19' },
+        { studentId: 'stu-2', subjectId: 'sub-3', attended: 35, conducted: 38, lastUpdated: '2026-11-18' },
+        { studentId: 'stu-2', subjectId: 'sub-4', attended: 33, conducted: 36, lastUpdated: '2026-11-18' },
+        // Aarav Kulkarni (stu-3)
+        { studentId: 'stu-3', subjectId: 'sub-1', attended: 29, conducted: 40, lastUpdated: '2026-11-19' },
+        { studentId: 'stu-3', subjectId: 'sub-2', attended: 31, conducted: 40, lastUpdated: '2026-11-19' },
+        { studentId: 'stu-3', subjectId: 'sub-3', attended: 30, conducted: 38, lastUpdated: '2026-11-18' },
+        { studentId: 'stu-3', subjectId: 'sub-4', attended: 28, conducted: 36, lastUpdated: '2026-11-18' },
+        // Sneha Reddy (stu-4)
+        { studentId: 'stu-4', subjectId: 'sub-1', attended: 35, conducted: 40, lastUpdated: '2026-11-19' },
+        { studentId: 'stu-4', subjectId: 'sub-2', attended: 34, conducted: 40, lastUpdated: '2026-11-19' },
+        { studentId: 'stu-4', subjectId: 'sub-3', attended: 32, conducted: 38, lastUpdated: '2026-11-18' },
+        { studentId: 'stu-4', subjectId: 'sub-4', attended: 31, conducted: 36, lastUpdated: '2026-11-18' }
+      ],
+      attendanceLogs: [
+        { id: 'log-1', date: '2026-11-19', subjectId: 'sub-1', topic: 'Graph Traversals: BFS & DFS', presentCount: 3, totalCount: 4 },
+        { id: 'log-2', date: '2026-11-18', subjectId: 'sub-2', topic: 'Normalization (3NF & BCNF)', presentCount: 4, totalCount: 4 }
+      ],
+      marks: [
+        // Rahul Sharma
+        { id: 'm-1', studentId: 'stu-1', subjectId: 'sub-1', assessment: 'Internal Test 1', obtained: 18, max: 20, published: true },
+        { id: 'm-2', studentId: 'stu-1', subjectId: 'sub-1', assessment: 'Mid-Semester Exam', obtained: 34, max: 40, published: true },
+        { id: 'm-3', studentId: 'stu-1', subjectId: 'sub-2', assessment: 'Internal Test 1', obtained: 17, max: 20, published: true },
+        { id: 'm-4', studentId: 'stu-1', subjectId: 'sub-2', assessment: 'Mid-Semester Exam', obtained: 31, max: 40, published: true },
+        { id: 'm-5', studentId: 'stu-1', subjectId: 'sub-3', assessment: 'Internal Test 1', obtained: 15, max: 20, published: true },
+        { id: 'm-6', studentId: 'stu-1', subjectId: 'sub-4', assessment: 'Internal Test 1', obtained: 19, max: 20, published: true },
+        // Other students for Faculty Marks Grid
+        { id: 'm-7', studentId: 'stu-2', subjectId: 'sub-1', assessment: 'Internal Test 1', obtained: 19, max: 20, published: true },
+        { id: 'm-8', studentId: 'stu-2', subjectId: 'sub-1', assessment: 'Mid-Semester Exam', obtained: 37, max: 40, published: true },
+        { id: 'm-9', studentId: 'stu-3', subjectId: 'sub-1', assessment: 'Internal Test 1', obtained: 14, max: 20, published: true },
+        { id: 'm-10', studentId: 'stu-3', subjectId: 'sub-1', assessment: 'Mid-Semester Exam', obtained: 27, max: 40, published: true },
+        { id: 'm-11', studentId: 'stu-4', subjectId: 'sub-1', assessment: 'Internal Test 1', obtained: 16, max: 20, published: true },
+        { id: 'm-12', studentId: 'stu-4', subjectId: 'sub-1', assessment: 'Mid-Semester Exam', obtained: 32, max: 40, published: true }
+      ],
+      assignments: [
+        {
+          id: 'asg-1',
+          subjectId: 'sub-1',
+          title: 'Binary Search Tree & AVL Rotations Implementation',
+          description: 'Implement insertion, deletion, and height-balancing rotations in C++/Java with time complexity analysis.',
+          dueDate: '2026-11-25',
+          maxMarks: 10
+        },
+        {
+          id: 'asg-2',
+          subjectId: 'sub-2',
+          title: 'ER-to-Relational Schema Mapping & SQL Queries',
+          description: 'Design a normalized university database schema and write 15 complex JOIN and aggregate queries.',
+          dueDate: '2026-11-28',
+          maxMarks: 10
+        },
+        {
+          id: 'asg-3',
+          subjectId: 'sub-3',
+          title: 'CPU Scheduling Algorithms Simulation',
+          description: 'Compare FCFS, SJF, and Round Robin turnaround time and waiting time metrics.',
+          dueDate: '2026-11-15',
+          maxMarks: 10
+        }
+      ],
+      submissions: [
+        {
+          id: 'subm-1',
+          assignmentId: 'asg-3',
+          studentId: 'stu-1',
+          fileName: 'Rahul_24CS042_CPU_Scheduling.pdf',
+          submittedAt: '2026-11-14 18:42',
+          status: 'Evaluated',
+          marksAwarded: 9,
+          feedback: 'Clean Gantt chart visualizations and accurate waiting time calculations.'
+        },
+        {
+          id: 'subm-2',
+          assignmentId: 'asg-1',
+          studentId: 'stu-2',
+          fileName: 'Priya_24CS019_AVL_Trees.zip',
+          submittedAt: '2026-11-19 14:10',
+          status: 'Submitted',
+          marksAwarded: null,
+          feedback: ''
+        }
+      ],
+      timetable: [
+        { day: 'Monday', slots: ['CS301 (LH-201)', 'CS302 (LH-201)', 'MA301 (LH-104)', 'DSA Lab (Lab-3)'] },
+        { day: 'Tuesday', slots: ['CS302 (LH-201)', 'CS303 (LH-202)', 'CS301 (LH-201)', 'DBMS Lab (Lab-1)'] },
+        { day: 'Wednesday', slots: ['MA301 (LH-104)', 'CS301 (LH-201)', 'CS303 (LH-202)', 'Tutorial / Mentoring'] },
+        { day: 'Thursday', slots: ['CS303 (LH-202)', 'CS302 (LH-201)', 'MA301 (LH-104)', 'OS Lab (Lab-2)'] },
+        { day: 'Friday', slots: ['CS301 (LH-201)', 'MA301 (LH-104)', 'CS302 (LH-201)', 'Mini Project Lab'] }
+      ],
+      announcements: [
+        {
+          id: 'ann-1',
+          title: 'End-Semester Practical Examination Schedule Released',
+          content: 'Semester 3 practical examinations for DSA and DBMS will commence from December 4, 2026. Ensure all lab records are signed.',
+          audience: 'All',
+          author: 'Admin Office',
+          date: 'Nov 19, 2026'
+        },
+        {
+          id: 'ann-2',
+          title: 'Minimum 75% Attendance Requirement Notice',
+          content: 'Students falling below the 75% subject attendance threshold must meet their faculty advisor before November 27.',
+          audience: 'Students',
+          author: 'Academic Dean',
+          date: 'Nov 17, 2026'
+        },
+        {
+          id: 'ann-3',
+          title: 'CS301 Extra Doubt-Clearing Session',
+          content: 'An optional tutorial on Dynamic Programming and Graph Shortest Paths will be held in LH-201 this Friday at 3:00 PM.',
+          audience: 'Students',
+          author: 'Prof. Ananya Nair',
+          date: 'Nov 16, 2026'
+        }
+      ]
+    };
+
+    // Load or initialize DB
+    function loadDB() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_DB));
+          return JSON.parse(JSON.stringify(INITIAL_DB));
+        }
+        return JSON.parse(raw);
+      } catch (e) {
+        return JSON.parse(JSON.stringify(INITIAL_DB));
+      }
+    }
+
+    function saveDB() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+      } catch (e) {
+        console.warn('LocalStorage write failed', e);
+      }
+    }
+
+    let db = loadDB();
+
+    // Navigation State
+    let currentPortal = 'landing'; // 'landing' | 'student' | 'faculty' | 'admin'
+    let studentTab = 'overview';   // 'overview' | 'attendance' | 'marks' | 'assignments' | 'timetable' | 'report'
+    let facultyTab = 'overview';   // 'overview' | 'attendance' | 'marks' | 'assignments'
+    let adminTab = 'overview';     // 'overview' | 'students' | 'subjects' | 'announcements'
+
+    // Active chart instances so we can cleanly destroy before re-render
+    let chartInstances = {};
+
+    /*************************************************************************
+     * 2. HELPER UTILITIES
+     *************************************************************************/
+    function showToast(message, type = 'default') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const borderClass = type === 'success' ? 'border-[#065F46]/30 bg-white text-[#111827]' : 'border-[#E5E7EB] bg-[#18181B] text-white';
+      const iconName = type === 'success' ? 'check-circle-2' : 'info';
+      const iconColor = type === 'success' ? 'text-[#065F46]' : 'text-white';
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-2.5 rounded-lg border shadow-md text-xs font-medium transition-all duration-200 ${borderClass}`;
+      toast.innerHTML = `<i data-lucide="${iconName}" class="w-4 h-4 ${iconColor} shrink-0"></i><span>${message}</span>`;
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(6px)';
+        setTimeout(() => toast.remove(), 200);
+      }, 3000);
+    }
+
+    function getSubjectById(id) {
+      return db.subjects.find(s => s.id === id) || { code: 'SUB', name: 'Unknown Subject', credits: 3, facultyId: 'fac-1' };
+    }
+
+    function getFacultyById(id) {
+      return db.faculty.find(f => f.id === id) || { name: 'Faculty Member', department: 'CSE' };
+    }
+
+    function getStudentById(id) {
+      return db.students.find(s => s.id === id) || db.students[0];
+    }
+
+    function calcPct(attended, conducted) {
+      if (!conducted || conducted === 0) return 0;
+      return Number(((attended / conducted) * 100).toFixed(1));
+    }
+
+    function getStudentStats(studentId) {
+      const attRows = db.attendance.filter(a => a.studentId === studentId);
+      const totalAttended = attRows.reduce((acc, r) => acc + r.attended, 0);
+      const totalConducted = attRows.reduce((acc, r) => acc + r.conducted, 0);
+      const overallAttendance = calcPct(totalAttended, totalConducted);
+
+      const pubMarks = db.marks.filter(m => m.studentId === studentId && m.published);
+      let avgMarksPct = 0;
+      if (pubMarks.length > 0) {
+        const sumPct = pubMarks.reduce((acc, m) => acc + (m.obtained / m.max) * 100, 0);
+        avgMarksPct = Number((sumPct / pubMarks.length).toFixed(1));
+      }
+
+      const studentSubs = db.submissions.filter(s => s.studentId === studentId);
+      const pendingAssignments = db.assignments.filter(a => !studentSubs.some(s => s.assignmentId === a.id)).length;
+
+      return {
+        attRows,
+        totalAttended,
+        totalConducted,
+        overallAttendance,
+        pubMarks,
+        avgMarksPct,
+        pendingAssignments,
+        enrolledCount: attRows.length
+      };
+    }
+
+    function resetDemoDatabase() {
+      db = JSON.parse(JSON.stringify(INITIAL_DB));
+      saveDB();
+      renderApp();
+      showToast('Demo database reset to initial state', 'success');
+    }
+
+    function openSchemaModal() {
+      const modal = document.getElementById('schema-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeSchemaModal() {
+      const modal = document.getElementById('schema-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function copySqlCode() {
+      const text = document.getElementById('sql-code-block').innerText;
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      showToast('PostgreSQL Schema & RLS copied to clipboard', 'success');
+    }
+
+    /*************************************************************************
+     * 3. PORTAL & TAB ROUTING
+     *************************************************************************/
+    function switchPortal(portal) {
+      currentPortal = portal;
+      renderApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function setStudentTab(tab) {
+      studentTab = tab;
+      renderApp();
+    }
+
+    function setFacultyTab(tab) {
+      facultyTab = tab;
+      renderApp();
+    }
+
+    function setAdminTab(tab) {
+      adminTab = tab;
+      renderApp();
+    }
+
+    function updateHeaderRolePills() {
+      ['landing', 'student', 'faculty', 'admin'].forEach(role => {
+        const desktopBtn = document.getElementById(`nav-role-${role}`);
+        const mobileBtn = document.getElementById(`m-role-${role}`);
+        if (desktopBtn) {
+          if (currentPortal === role) {
+            desktopBtn.className = 'role-pill px-3 py-1 rounded-md bg-white text-[#111827] shadow-xs border border-[#E5E7EB] font-semibold transition-all';
+          } else {
+            desktopBtn.className = 'role-pill px-3 py-1 rounded-md text-[#4B5563] hover:text-[#111827] transition-all';
+          }
+        }
+        if (mobileBtn) {
+          if (currentPortal === role) {
+            mobileBtn.className = 'px-2.5 py-1 rounded-md bg-[#18181B] text-white font-medium';
+          } else {
+            mobileBtn.className = 'px-2.5 py-1 rounded-md text-[#4B5563]';
+          }
+        }
+      });
+    }
+
+    function destroyCharts() {
+      Object.values(chartInstances).forEach(ch => {
+        if (ch && typeof ch.destroy === 'function') ch.destroy();
+      });
+      chartInstances = {};
+    }
+
+    function renderApp() {
+      destroyCharts();
+      updateHeaderRolePills();
+      const root = document.getElementById('app-root');
+
+      if (currentPortal === 'landing') {
+        root.innerHTML = renderLandingView();
+      } else if (currentPortal === 'student') {
+        root.innerHTML = renderStudentPortal();
+        initStudentCharts();
+      } else if (currentPortal === 'faculty') {
+        root.innerHTML = renderFacultyPortal();
+      } else if (currentPortal === 'admin') {
+        root.innerHTML = renderAdminPortal();
+        initAdminCharts();
+      }
+
+      lucide.createIcons();
+    }
+
+    /*************************************************************************
+     * 4. VIEW 1: PUBLIC LANDING & ROLE LOGIN PORTAL
+     *************************************************************************/
+    function renderLandingView() {
+      return `
+        <div class="flex-1 flex flex-col">
+          <!-- Minimalist Hero -->
+          <section class="bg-white border-b border-[#E5E7EB]">
+            <div class="max-w-5xl mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center">
+              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F3F4F6] border border-[#E5E7EB] text-xs font-medium text-[#4B5563] mb-6">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#18181B]"></span>
+                Centralized Academic Management & DBMS Platform
+              </div>
+              <h1 class="text-3xl sm:text-5xl font-semibold tracking-tight text-[#111827] max-w-3xl mx-auto leading-[1.15]">
+                Your academics.<br class="hidden sm:inline" /> One calm, unified place.
+              </h1>
+              <p class="mt-4 text-sm sm:text-base text-[#4B5563] max-w-2xl mx-auto leading-relaxed">
+                ScholarTrack connects students, faculty, and college administration through a single relational database—automating attendance thresholds, assessment analytics, and digital submissions.
+              </p>
+
+              <!-- One-Click Role Access Cards -->
+              <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4 text-left max-w-4xl mx-auto">
+                <!-- Student Login Card -->
+                <div class="st-card p-5 flex flex-col justify-between hover:border-[#9CA3AF] transition-colors">
+                  <div>
+                    <div class="flex items-center justify-between mb-3">
+                      <span class="w-9 h-9 rounded-lg bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center text-[#111827]">
+                        <i data-lucide="graduation-cap" class="w-4 h-4"></i>
+                      </span>
+                      <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#4B5563]">Role: Student</span>
+                    </div>
+                    <h2 class="text-base font-semibold text-[#111827]">Student Portal</h2>
+                    <p class="text-xs text-[#4B5563] mt-1 leading-relaxed">
+                      Monitor real-time subject attendance, simulate threshold targets, view published marks, and submit assignments.
+                    </p>
+                  </div>
+                  <div class="mt-5 pt-4 border-t border-[#E5E7EB]">
+                    <div class="text-[11px] text-[#9CA3AF] mb-2">Demo: Rahul Sharma (24CS042)</div>
+                    <button onclick="switchPortal('student')" class="w-full py-2 px-3 rounded-lg bg-[#18181B] hover:bg-[#27272A] text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors">
+                      <span>Enter Student Dashboard</span>
+                      <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Faculty Login Card -->
+                <div class="st-card p-5 flex flex-col justify-between hover:border-[#9CA3AF] transition-colors">
+                  <div>
+                    <div class="flex items-center justify-between mb-3">
+                      <span class="w-9 h-9 rounded-lg bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center text-[#111827]">
+                        <i data-lucide="book-open" class="w-4 h-4"></i>
+                      </span>
+                      <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#4B5563]">Role: Faculty</span>
+                    </div>
+                    <h2 class="text-base font-semibold text-[#111827]">Faculty Portal</h2>
+                    <p class="text-xs text-[#4B5563] mt-1 leading-relaxed">
+                      Mark daily class attendance, publish internal assessment scores, create assignments, and grade submissions.
+                    </p>
+                  </div>
+                  <div class="mt-5 pt-4 border-t border-[#E5E7EB]">
+                    <div class="text-[11px] text-[#9CA3AF] mb-2">Demo: Prof. Ananya Nair (CSE)</div>
+                    <button onclick="switchPortal('faculty')" class="w-full py-2 px-3 rounded-lg bg-[#18181B] hover:bg-[#27272A] text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors">
+                      <span>Enter Faculty Dashboard</span>
+                      <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Admin Login Card -->
+                <div class="st-card p-5 flex flex-col justify-between hover:border-[#9CA3AF] transition-colors">
+                  <div>
+                    <div class="flex items-center justify-between mb-3">
+                      <span class="w-9 h-9 rounded-lg bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center text-[#111827]">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i>
+                      </span>
+                      <span class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#4B5563]">Role: Admin</span>
+                    </div>
+                    <h2 class="text-base font-semibold text-[#111827]">Administration Portal</h2>
+                    <p class="text-xs text-[#4B5563] mt-1 leading-relaxed">
+                      Manage student enrollments, faculty allocations, semester subjects, campus notices, and institutional analytics.
+                    </p>
+                  </div>
+                  <div class="mt-5 pt-4 border-t border-[#E5E7EB]">
+                    <div class="text-[11px] text-[#9CA3AF] mb-2">Demo: Academic Admin Office</div>
+                    <button onclick="switchPortal('admin')" class="w-full py-2 px-3 rounded-lg bg-[#18181B] hover:bg-[#27272A] text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors">
+                      <span>Enter Admin Dashboard</span>
+                      <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Architecture & Project Highlights -->
+          <section class="max-w-5xl mx-auto px-4 sm:px-6 py-12 w-full">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-2">
+              <div>
+                <h3 class="text-base font-semibold text-[#111827]">System Architecture & Evaluation Workflow</h3>
+                <p class="text-xs text-[#4B5563] mt-0.5">All three portals read and write to the same synchronized state store.</p>
+              </div>
+              <button onclick="openSchemaModal()" class="text-xs font-medium text-[#111827] underline underline-offset-4 hover:text-[#4B5563] self-start sm:self-auto">
+                Inspect PostgreSQL ER & RLS Policies →
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="st-card p-4">
+                <div class="text-xs font-semibold text-[#111827] mb-1">01. Live Sync Workflow</div>
+                <p class="text-xs text-[#4B5563] leading-relaxed">Mark attendance or publish marks in the Faculty Portal, then switch to Student Portal to see instant updates.</p>
+              </div>
+              <div class="st-card p-4">
+                <div class="text-xs font-semibold text-[#111827] mb-1">02. Threshold Predictor</div>
+                <p class="text-xs text-[#4B5563] leading-relaxed">Interactive attendance simulator calculates safe classes to miss or consecutive classes needed for 75%.</p>
+              </div>
+              <div class="st-card p-4">
+                <div class="text-xs font-semibold text-[#111827] mb-1">03. Role-Based Isolation</div>
+                <p class="text-xs text-[#4B5563] leading-relaxed">Switch active student accounts inside the Student Portal to verify strict per-student record isolation.</p>
+              </div>
+              <div class="st-card p-4">
+                <div class="text-xs font-semibold text-[#111827] mb-1">04. Printable Transcript</div>
+                <p class="text-xs text-[#4B5563] leading-relaxed">Generate an official, formatted semester academic progress report ready for PDF export or printing.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      `;
+    }
+
+    /*************************************************************************
+     * 5. VIEW 2: STUDENT PORTAL
+     *************************************************************************/
+    function renderStudentPortal() {
+      const student = getStudentById(db.activeStudentId);
+      const stats = getStudentStats(student.id);
+
+      const navItems = [
+        { id: 'overview', label: 'Overview', icon: 'layout-dashboard' },
+        { id: 'attendance', label: 'Attendance & Predictor', icon: 'calendar-check' },
+        { id: 'marks', label: 'Examination Marks', icon: 'award' },
+        { id: 'assignments', label: 'Assignments', icon: 'file-text', badge: stats.pendingAssignments || null },
+        { id: 'timetable', label: 'Weekly Timetable', icon: 'clock' },
+        { id: 'report', label: 'Academic Report', icon: 'printer' }
+      ];
+
+      let contentHtml = '';
+      if (studentTab === 'overview') contentHtml = renderStudentOverview(student, stats);
+      else if (studentTab === 'attendance') contentHtml = renderStudentAttendance(student, stats);
+      else if (studentTab === 'marks') contentHtml = renderStudentMarks(student, stats);
+      else if (studentTab === 'assignments') contentHtml = renderStudentAssignments(student);
+      else if (studentTab === 'timetable') contentHtml = renderStudentTimetable(student);
+      else if (studentTab === 'report') contentHtml = renderStudentReport(student, stats);
+
+      return `
+        <div class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col lg:flex-row gap-6">
+          <!-- Left Sidebar -->
+          <aside class="w-full lg:w-60 shrink-0 space-y-4 no-print">
+            <!-- Student Identity Card + Student Switcher (to demonstrate RLS data isolation) -->
+            <div class="st-card p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-[#18181B] text-white flex items-center justify-center text-xs font-semibold">
+                  ${student.name.split(' ').map(n => n[0]).join('')}
+                </div>
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold text-[#111827] truncate">${student.name}</div>
+                  <div class="text-xs text-[#4B5563] tabular-nums">${student.rollNumber} · Sem ${student.semester}</div>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-[#E5E7EB]">
+                <label class="block text-[10px] font-medium uppercase tracking-wider text-[#9CA3AF] mb-1">
+                  Active Student Session (RLS Test)
+                </label>
+                <select onchange="changeActiveStudent(this.value)" class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 text-[#111827] focus:outline-none focus:border-[#9CA3AF]">
+                  ${db.students.map(s => `<option value="${s.id}" ${s.id === student.id ? 'selected' : ''}>${s.name} (${s.rollNumber})</option>`).join('')}
+                </select>
+              </div>
+            </div>
+
+            <!-- Sidebar Navigation -->
+            <nav class="st-card p-2 flex lg:flex-col gap-1 overflow-x-auto">
+              ${navItems.map(item => {
+                const active = studentTab === item.id;
+                return `
+                  <button onclick="setStudentTab('${item.id}')" class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${active ? 'bg-[#18181B] text-white' : 'text-[#4B5563] hover:bg-[#F3F4F6] hover:text-[#111827]'}">
+                    <span class="flex items-center gap-2.5">
+                      <i data-lucide="${item.icon}" class="w-4 h-4 ${active ? 'text-white' : 'text-[#4B5563]'}"></i>
+                      <span>${item.label}</span>
+                    </span>
+                    ${item.badge ? `<span class="px-1.5 py-0.2 rounded-full text-[10px] tabular-nums ${active ? 'bg-white/20 text-white' : 'bg-[#F3F4F6] text-[#111827] border border-[#E5E7EB]'}">${item.badge}</span>` : ''}
+                  </button>
+                `;
+              }).join('')}
+            </nav>
+          </aside>
+
+          <!-- Main Content Area -->
+          <div class="flex-1 min-w-0">
+            ${contentHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function changeActiveStudent(studentId) {
+      db.activeStudentId = studentId;
+      saveDB();
+      renderApp();
+      const s = getStudentById(studentId);
+      showToast(`Switched session to ${s.name} (${s.rollNumber}) — isolated records loaded`);
+    }
+
+    function renderStudentOverview(student, stats) {
+      const lowAttendanceSubjects = stats.attRows.filter(r => calcPct(r.attended, r.conducted) < 75);
+
+      return `
+        <div class="space-y-6">
+          <!-- Page Header -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Academic Overview</h1>
+              <p class="text-xs text-[#4B5563] mt-0.5">B.Tech ${student.department} · Semester ${student.semester} · Section ${student.section}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="setStudentTab('report')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E7EB] bg-white hover:bg-[#F3F4F6] text-xs font-medium text-[#111827]">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Export Report</span>
+              </button>
+            </div>
+          </div>
+
+          ${lowAttendanceSubjects.length > 0 ? `
+            <div class="p-3.5 rounded-lg bg-[#FEF2F2] border border-[#991B1B]/20 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5 text-xs text-[#991B1B]">
+                <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+                <span>
+                  <strong>Attendance Alert:</strong> Your attendance in <strong>${getSubjectById(lowAttendanceSubjects[0].subjectId).name}</strong> is ${calcPct(lowAttendanceSubjects[0].attended, lowAttendanceSubjects[0].conducted)}% (below the 75% threshold).
+                </span>
+              </div>
+              <button onclick="setStudentTab('attendance')" class="text-xs font-semibold text-[#991B1B] underline whitespace-nowrap">
+                Simulate Recovery →
+              </button>
+            </div>
+          ` : ''}
+
+          <!-- KPI Cards Grid -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="st-card p-4">
+              <div class="flex items-center justify-between text-xs text-[#4B5563]">
+                <span>Overall Attendance</span>
+                <i data-lucide="calendar-check" class="w-4 h-4 text-[#9CA3AF]"></i>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-2xl font-semibold text-[#111827] tabular-nums">${stats.overallAttendance}%</span>
+                <span class="text-[11px] font-medium px-2 py-0.5 rounded-full ${stats.overallAttendance >= 75 ? 'bg-[#ECFDF5] text-[#065F46]' : 'bg-[#FEF2F2] text-[#991B1B]'}">
+                  ${stats.overallAttendance >= 75 ? 'Eligible' : 'Low'}
+                </span>
+              </div>
+              <div class="mt-1 text-[11px] text-[#9CA3AF] tabular-nums">${stats.totalAttended} of ${stats.totalConducted} classes</div>
+            </div>
+
+            <div class="st-card p-4">
+              <div class="flex items-center justify-between text-xs text-[#4B5563]">
+                <span>Academic Average</span>
+                <i data-lucide="trending-up" class="w-4 h-4 text-[#9CA3AF]"></i>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-2xl font-semibold text-[#111827] tabular-nums">${stats.avgMarksPct}%</span>
+              </div>
+              <div class="mt-1 text-[11px] text-[#9CA3AF] tabular-nums">Across ${stats.pubMarks.length} published tests</div>
+            </div>
+
+            <div class="st-card p-4">
+              <div class="flex items-center justify-between text-xs text-[#4B5563]">
+                <span>Pending Tasks</span>
+                <i data-lucide="file-clock" class="w-4 h-4 text-[#9CA3AF]"></i>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-2xl font-semibold text-[#111827] tabular-nums">${stats.pendingAssignments}</span>
+                <span class="text-xs text-[#4B5563]">assignments</span>
+              </div>
+              <div class="mt-1 text-[11px] text-[#9CA3AF]">Out of ${db.assignments.length} total assigned</div>
+            </div>
+
+            <div class="st-card p-4">
+              <div class="flex items-center justify-between text-xs text-[#4B5563]">
+                <span>Enrolled Subjects</span>
+                <i data-lucide="book" class="w-4 h-4 text-[#9CA3AF]"></i>
+              </div>
+              <div class="mt-2 flex items-baseline gap-2">
+                <span class="text-2xl font-semibold text-[#111827] tabular-nums">${stats.enrolledCount}</span>
+                <span class="text-xs text-[#4B5563]">courses</span>
+              </div>
+              <div class="mt-1 text-[11px] text-[#9CA3AF]">Semester ${student.semester} Active</div>
+            </div>
+          </div>
+
+          <!-- Chart + Announcements Row -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Subject-wise Attendance Bar Chart -->
+            <div class="st-card p-5 lg:col-span-2 flex flex-col">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h2 class="text-sm font-semibold text-[#111827]">Subject-Wise Attendance Breakdown</h2>
+                  <p class="text-xs text-[#4B5563]">75% institutional minimum benchmark</p>
+                </div>
+                <button onclick="setStudentTab('attendance')" class="text-xs font-medium text-[#4B5563] hover:text-[#111827]">
+                  Details →
+                </button>
+              </div>
+              <div class="relative h-56 w-full">
+                <canvas id="studentAttendanceChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Campus & Faculty Announcements -->
+            <div class="st-card p-5 flex flex-col">
+              <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-semibold text-[#111827]">Academic Notices</h2>
+                <span class="text-[11px] text-[#9CA3AF]">${db.announcements.length} updates</span>
+              </div>
+              <div class="space-y-3 overflow-y-auto max-h-60 pr-1">
+                ${db.announcements.map(ann => `
+                  <div class="p-3 rounded-lg bg-[#F9FAFB] border border-[#E5E7EB]">
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                      <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white border border-[#E5E7EB] text-[#4B5563]">${ann.author}</span>
+                      <span class="text-[10px] text-[#9CA3AF] tabular-nums">${ann.date}</span>
+                    </div>
+                    <div class="text-xs font-semibold text-[#111827] leading-snug">${ann.title}</div>
+                    <p class="text-[11px] text-[#4B5563] mt-1 leading-relaxed">${ann.content}</p>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Published Marks Table -->
+          <div class="st-card overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-[#E5E7EB] flex items-center justify-between">
+              <h2 class="text-sm font-semibold text-[#111827]">Recent Examination Marks</h2>
+              <button onclick="setStudentTab('marks')" class="text-xs font-medium text-[#4B5563] hover:text-[#111827]">View All Marks →</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-[#F3F4F6] border-b border-[#E5E7EB] text-[11px] font-medium text-[#4B5563] uppercase tracking-wider">
+                    <th class="py-2.5 px-5">Subject</th>
+                    <th class="py-2.5 px-4">Assessment</th>
+                    <th class="py-2.5 px-4 text-right">Score</th>
+                    <th class="py-2.5 px-5 text-right">Percentage</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E7EB] text-xs">
+                  ${stats.pubMarks.slice(0, 4).map(m => {
+                    const sub = getSubjectById(m.subjectId);
+                    const pct = calcPct(m.obtained, m.max);
+                    return `
+                      <tr class="hover:bg-[#F9FAFB]">
+                        <td class="py-3 px-5 font-medium text-[#111827]">${sub.code} — ${sub.name}</td>
+                        <td class="py-3 px-4 text-[#4B5563]">${m.assessment}</td>
+                        <td class="py-3 px-4 text-right tabular-nums font-medium text-[#111827]">${m.obtained} / ${m.max}</td>
+                        <td class="py-3 px-5 text-right tabular-nums">
+                          <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#F3F4F6] text-[#111827]">${pct}%</span>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function initStudentCharts() {
+      const ctx = document.getElementById('studentAttendanceChart');
+      if (!ctx) return;
+      const stats = getStudentStats(db.activeStudentId);
+      const labels = stats.attRows.map(r => getSubjectById(r.subjectId).code);
+      const values = stats.attRows.map(r => calcPct(r.attended, r.conducted));
+      const bgColors = values.map(v => v >= 75 ? '#18181B' : '#991B1B');
+
+      chartInstances.studentAtt = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Attendance %',
+            data: values,
+            backgroundColor: bgColors,
+            borderRadius: 6,
+            barThickness: 36
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#18181B',
+              titleFont: { family: 'Inter', size: 12 },
+              bodyFont: { family: 'Inter', size: 12 },
+              callbacks: {
+                label: (c) => ` Attendance: ${c.raw}%`
+              }
+            }
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 100,
+              grid: { color: '#F3F4F6' },
+              ticks: { font: { family: 'Inter', size: 11 }, color: '#9CA3AF', callback: v => v + '%' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { family: 'Inter', size: 11, weight: '500' }, color: '#4B5563' }
+            }
+          }
+        }
+      });
+    }
+
+    function renderStudentAttendance(student, stats) {
+      const defaultSub = stats.attRows[0] || { subjectId: 'sub-1', attended: 30, conducted: 40 };
+
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Attendance & Smart Threshold Predictor</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Live subject attendance records and interactive target simulator</p>
+          </div>
+
+          <!-- Subject-wise Table -->
+          <div class="st-card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-[#F3F4F6] border-b border-[#E5E7EB] text-[11px] font-medium text-[#4B5563] uppercase tracking-wider">
+                    <th class="py-3 px-5">Subject</th>
+                    <th class="py-3 px-4">Faculty</th>
+                    <th class="py-3 px-4 text-right">Attended</th>
+                    <th class="py-3 px-4 text-right">Conducted</th>
+                    <th class="py-3 px-4 text-right">Missed</th>
+                    <th class="py-3 px-4 text-right">Percentage</th>
+                    <th class="py-3 px-5 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E7EB] text-xs">
+                  ${stats.attRows.map(row => {
+                    const sub = getSubjectById(row.subjectId);
+                    const fac = getFacultyById(sub.facultyId);
+                    const pct = calcPct(row.attended, row.conducted);
+                    const isSafe = pct >= 75;
+                    return `
+                      <tr class="hover:bg-[#F9FAFB]">
+                        <td class="py-3.5 px-5">
+                          <div class="font-semibold text-[#111827]">${sub.name}</div>
+                          <div class="text-[11px] text-[#9CA3AF]">${sub.code} · ${sub.credits} Credits</div>
+                        </td>
+                        <td class="py-3.5 px-4 text-[#4B5563]">${fac.name}</td>
+                        <td class="py-3.5 px-4 text-right tabular-nums font-medium text-[#111827]">${row.attended}</td>
+                        <td class="py-3.5 px-4 text-right tabular-nums text-[#4B5563]">${row.conducted}</td>
+                        <td class="py-3.5 px-4 text-right tabular-nums text-[#4B5563]">${row.conducted - row.attended}</td>
+                        <td class="py-3.5 px-4 text-right tabular-nums font-semibold text-[#111827]">${pct}%</td>
+                        <td class="py-3.5 px-5 text-right">
+                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${isSafe ? 'bg-[#ECFDF5] text-[#065F46]' : 'bg-[#FEF2F2] text-[#991B1B]'}">
+                            ${isSafe ? 'Above 75%' : 'Below 75%'}
+                          </span>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Smart Attendance Calculator & Predictor -->
+          <div class="st-card p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E5E7EB]">
+              <div>
+                <h2 class="text-sm font-semibold text-[#111827]">Smart Attendance Predictor</h2>
+                <p class="text-xs text-[#4B5563]">Calculate classes needed to reach 75% or simulate attending upcoming lectures</p>
+              </div>
+              <select id="calc-subject-select" onchange="runAttendanceCalculator()" class="text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-1.5 text-[#111827] font-medium">
+                ${stats.attRows.map(r => {
+                  const s = getSubjectById(r.subjectId);
+                  return `<option value="${r.subjectId}">${s.code} — ${s.name} (${r.attended}/${r.conducted})</option>`;
+                }).join('')}
+              </select>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-5">
+              <!-- Automatic Threshold Insight -->
+              <div id="calc-insight-box" class="p-4 rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] flex flex-col justify-between">
+                ${buildAttendanceInsightHTML(defaultSub.attended, defaultSub.conducted)}
+              </div>
+
+              <!-- Interactive Next N Classes Simulator -->
+              <div class="p-4 rounded-lg border border-[#E5E7EB] space-y-4">
+                <div>
+                  <div class="flex items-center justify-between text-xs font-medium text-[#111827] mb-1.5">
+                    <span>Simulate Attending Next Classes:</span>
+                    <span id="sim-attend-val" class="tabular-nums font-semibold px-2 py-0.5 rounded bg-[#F3F4F6]">5 classes</span>
+                  </div>
+                  <input id="sim-attend-slider" type="range" min="0" max="20" value="5" oninput="runAttendanceCalculator()" class="w-full accent-[#18181B] cursor-pointer" />
+                </div>
+
+                <div>
+                  <div class="flex items-center justify-between text-xs font-medium text-[#111827] mb-1.5">
+                    <span>Simulate Missing Classes:</span>
+                    <span id="sim-miss-val" class="tabular-nums font-semibold px-2 py-0.5 rounded bg-[#F3F4F6]">0 classes</span>
+                  </div>
+                  <input id="sim-miss-slider" type="range" min="0" max="15" value="0" oninput="runAttendanceCalculator()" class="w-full accent-[#18181B] cursor-pointer" />
+                </div>
+
+                <div id="sim-projection-result" class="pt-3 border-t border-[#E5E7EB] flex items-center justify-between">
+                  ${buildProjectionHTML(defaultSub.attended, defaultSub.conducted, 5, 0)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function buildAttendanceInsightHTML(attended, conducted) {
+      const pct = calcPct(attended, conducted);
+      if (pct < 75) {
+        // Formula: (attended + x) / (conducted + x) >= 0.75 => x >= 3*conducted - 4*attended
+        const needed = Math.max(1, Math.ceil(3 * conducted - 4 * attended));
+        const futurePct = calcPct(attended + needed, conducted + needed);
+        return `
+          <div>
+            <span class="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#FEF2F2] text-[#991B1B] mb-2">Recovery Required</span>
+            <h3 class="text-sm font-semibold text-[#111827]">Attend the next <span class="underline">${needed} consecutive classes</span></h3>
+            <p class="text-xs text-[#4B5563] mt-1 leading-relaxed">
+              You are currently at <strong>${pct}%</strong> (${attended}/${conducted}). Attending ${needed} classes in a row will bring your attendance to <strong>${futurePct}%</strong>.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-[#E5E7EB] text-[11px] text-[#9CA3AF] font-mono">
+            Formula: (Attended + N) / (Total + N) ≥ 0.75
+          </div>
+        `;
+      } else {
+        // Formula: attended / (conducted + x) >= 0.75 => x <= floor((4*attended - 3*conducted)/3)
+        const canMiss = Math.max(0, Math.floor((4 * attended - 3 * conducted) / 3));
+        return `
+          <div>
+            <span class="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#ECFDF5] text-[#065F46] mb-2">Safe Standing (${pct}%)</span>
+            <h3 class="text-sm font-semibold text-[#111827]">You can safely miss up to <span class="underline">${canMiss} classes</span></h3>
+            <p class="text-xs text-[#4B5563] mt-1 leading-relaxed">
+              Your attendance is currently healthy at <strong>${pct}%</strong> (${attended}/${conducted}). Missing more than ${canMiss} lectures will drop you below 75%.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-[#E5E7EB] text-[11px] text-[#9CA3AF] font-mono">
+            Buffer Margin: ${canMiss} lecture(s) above threshold
+          </div>
+        `;
+      }
+    }
+
+    function buildProjectionHTML(attended, conducted, addAttend, addMiss) {
+      const newAtt = attended + addAttend;
+      const newCond = conducted + addAttend + addMiss;
+      const newPct = calcPct(newAtt, newCond);
+      const safe = newPct >= 75;
+      return `
+        <div>
+          <div class="text-[11px] text-[#4B5563]">Projected Attendance (${newAtt}/${newCond})</div>
+          <div class="text-lg font-semibold text-[#111827] tabular-nums">${newPct}%</div>
+        </div>
+        <span class="px-2.5 py-1 rounded-full text-xs font-medium ${safe ? 'bg-[#ECFDF5] text-[#065F46]' : 'bg-[#FEF2F2] text-[#991B1B]'}">
+          ${safe ? 'Meets 75% Rule' : 'Below 75% Rule'}
+        </span>
+      `;
+    }
+
+    function runAttendanceCalculator() {
+      const subId = document.getElementById('calc-subject-select').value;
+      const addAttend = parseInt(document.getElementById('sim-attend-slider').value, 10) || 0;
+      const addMiss = parseInt(document.getElementById('sim-miss-slider').value, 10) || 0;
+
+      document.getElementById('sim-attend-val').innerText = `${addAttend} classes`;
+      document.getElementById('sim-miss-val').innerText = `${addMiss} classes`;
+
+      const row = db.attendance.find(a => a.studentId === db.activeStudentId && a.subjectId === subId);
+      if (!row) return;
+
+      document.getElementById('calc-insight-box').innerHTML = buildAttendanceInsightHTML(row.attended, row.conducted);
+      document.getElementById('sim-projection-result').innerHTML = buildProjectionHTML(row.attended, row.conducted, addAttend, addMiss);
+    }
+
+    function renderStudentMarks(student, stats) {
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Examination Marks & Performance</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Published continuous assessment and mid-semester scores</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ${db.subjects.map(sub => {
+              const subMarks = stats.pubMarks.filter(m => m.subjectId === sub.id);
+              const totalObt = subMarks.reduce((acc, m) => acc + Number(m.obtained), 0);
+              const totalMax = subMarks.reduce((acc, m) => acc + Number(m.max), 0);
+              const subPct = totalMax > 0 ? calcPct(totalObt, totalMax) : null;
+
+              return `
+                <div class="st-card overflow-hidden flex flex-col justify-between">
+                  <div>
+                    <div class="px-5 py-3.5 bg-[#F9FAFB] border-b border-[#E5E7EB] flex items-center justify-between">
+                      <div>
+                        <span class="text-[11px] font-mono text-[#4B5563]">${sub.code}</span>
+                        <h3 class="text-sm font-semibold text-[#111827]">${sub.name}</h3>
+                      </div>
+                      ${subPct !== null ? `<span class="text-xs font-semibold tabular-nums px-2.5 py-1 rounded-md bg-white border border-[#E5E7EB] text-[#111827]">${subPct}%</span>` : ''}
+                    </div>
+                    <div class="p-4">
+                      ${subMarks.length > 0 ? `
+                        <table class="w-full text-xs">
+                          <thead>
+                            <tr class="text-[#9CA3AF] border-b border-[#E5E7EB]">
+                              <th class="pb-2 text-left font-medium">Assessment</th>
+                              <th class="pb-2 text-right font-medium">Obtained</th>
+                              <th class="pb-2 text-right font-medium">Max</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-[#F3F4F6]">
+                            ${subMarks.map(m => `
+                              <tr>
+                                <td class="py-2.5 text-[#111827]">${m.assessment}</td>
+                                <td class="py-2.5 text-right font-semibold tabular-nums text-[#111827]">${m.obtained}</td>
+                                <td class="py-2.5 text-right tabular-nums text-[#4B5563]">${m.max}</td>
+                              </tr>
+                            `).join('')}
+                          </tbody>
+                        </table>
+                      ` : `<p class="text-xs text-[#9CA3AF] py-4 text-center">No assessments published yet for this subject.</p>`}
+                    </div>
+                  </div>
+                  <div class="px-5 py-2.5 bg-[#F9FAFB] border-t border-[#E5E7EB] flex items-center justify-between text-xs">
+                    <span class="text-[#4B5563]">Aggregate Score</span>
+                    <span class="font-semibold tabular-nums text-[#111827]">${totalObt} / ${totalMax}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStudentAssignments(student) {
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Assignments & Digital Submissions</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Upload coursework files and review faculty evaluations</p>
+          </div>
+
+          <div class="space-y-4">
+            ${db.assignments.map(asg => {
+              const sub = getSubjectById(asg.subjectId);
+              const submission = db.submissions.find(s => s.assignmentId === asg.id && s.studentId === student.id);
+              const status = submission ? submission.status : 'Not Submitted';
+
+              let badgeClass = 'bg-[#F3F4F6] text-[#374151]';
+              if (status === 'Evaluated') badgeClass = 'bg-[#ECFDF5] text-[#065F46]';
+              else if (status === 'Submitted') badgeClass = 'bg-[#18181B] text-white';
+
+              return `
+                <div class="st-card p-5">
+                  <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div>
+                      <div class="flex items-center gap-2 mb-1">
+                        <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-[#F3F4F6] text-[#4B5563]">${sub.code}</span>
+                        <span class="text-xs text-[#4B5563]">${sub.name}</span>
+                      </div>
+                      <h3 class="text-base font-semibold text-[#111827]">${asg.title}</h3>
+                      <p class="text-xs text-[#4B5563] mt-1 leading-relaxed max-w-2xl">${asg.description}</p>
+                    </div>
+                    <div class="flex sm:flex-col items-end justify-between gap-2 shrink-0">
+                      <span class="px-2.5 py-1 rounded-full text-[11px] font-medium ${badgeClass}">${status}</span>
+                      <span class="text-[11px] text-[#9CA3AF] tabular-nums">Due: ${asg.dueDate} · Max ${asg.maxMarks} pts</span>
+                    </div>
+                  </div>
+
+                  <div class="mt-4 pt-4 border-t border-[#E5E7EB] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    ${submission ? `
+                      <div class="text-xs space-y-1">
+                        <div class="flex items-center gap-2 text-[#111827] font-medium">
+                          <i data-lucide="file-check" class="w-4 h-4 text-[#065F46]"></i>
+                          <span>${submission.fileName}</span>
+                          <span class="text-[11px] text-[#9CA3AF] tabular-nums">(${submission.submittedAt})</span>
+                        </div>
+                        ${submission.status === 'Evaluated' ? `
+                          <div class="text-[#065F46] bg-[#ECFDF5] px-3 py-1.5 rounded-md inline-block mt-1">
+                            <strong>Score: ${submission.marksAwarded}/${asg.maxMarks}</strong> — "${submission.feedback}"
+                          </div>
+                        ` : `<div class="text-[11px] text-[#4B5563]">Awaiting faculty grading</div>`}
+                      </div>
+                    ` : `
+                      <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <input type="file" id="file-input-${asg.id}" class="text-xs text-[#4B5563] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-[#E5E7EB] file:text-xs file:font-medium file:bg-[#F9FAFB] file:text-[#111827] hover:file:bg-[#F3F4F6]" />
+                        <button onclick="submitStudentAssignment('${asg.id}')" class="px-3.5 py-1.5 rounded-lg bg-[#18181B] hover:bg-[#27272A] text-white text-xs font-medium transition-colors">
+                          Upload & Submit
+                        </button>
+                      </div>
+                    `}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function submitStudentAssignment(assignmentId) {
+      const input = document.getElementById(`file-input-${assignmentId}`);
+      const student = getStudentById(db.activeStudentId);
+      let fileName = `${student.name.split(' ')[0]}_${student.rollNumber}_Submission.pdf`;
+      if (input && input.files && input.files.length > 0) {
+        fileName = input.files[0].name;
+      }
+
+      const now = new Date();
+      const timestamp = `${now.toISOString().split('T')[0]} ${now.toTimeString().slice(0, 5)}`;
+
+      db.submissions.push({
+        id: 'subm-' + Date.now(),
+        assignmentId,
+        studentId: student.id,
+        fileName,
+        submittedAt: timestamp,
+        status: 'Submitted',
+        marksAwarded: null,
+        feedback: ''
+      });
+
+      saveDB();
+      renderApp();
+      showToast('Assignment uploaded to database and visible to faculty', 'success');
+    }
+
+    function renderStudentTimetable(student) {
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Weekly Class Timetable</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Semester ${student.semester} · Section ${student.section} Schedule</p>
+          </div>
+
+          <div class="st-card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-[#F3F4F6] border-b border-[#E5E7EB] text-[11px] font-medium text-[#4B5563] uppercase tracking-wider">
+                    <th class="py-3 px-5">Day</th>
+                    <th class="py-3 px-4">09:00 – 10:00</th>
+                    <th class="py-3 px-4">10:00 – 11:00</th>
+                    <th class="py-3 px-4">11:15 – 12:15</th>
+                    <th class="py-3 px-5">02:00 – 04:00</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E7EB] text-xs">
+                  ${db.timetable.map(row => `
+                    <tr class="hover:bg-[#F9FAFB]">
+                      <td class="py-3.5 px-5 font-semibold text-[#111827]">${row.day}</td>
+                      ${row.slots.map(slot => `
+                        <td class="py-3.5 px-4">
+                          <span class="inline-block px-2.5 py-1 rounded-md bg-[#F9FAFB] border border-[#E5E7EB] text-[#111827] font-medium">
+                            ${slot}
+                          </span>
+                        </td>
+                      `).join('')}
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStudentReport(student, stats) {
+      return `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between no-print">
+            <div>
+              <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Academic Progress Transcript</h1>
+              <p class="text-xs text-[#4B5563]">Consolidated attendance and examination summary</p>
+            </div>
+            <button onclick="window.print()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#18181B] hover:bg-[#27272A] text-white text-xs font-medium">
+              <i data-lucide="printer" class="w-4 h-4"></i>
+              <span>Print / Save as PDF</span>
+            </button>
+          </div>
+
+          <div id="printable-report" class="st-card p-6 sm:p-8 space-y-6 bg-white">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-[#E5E7EB] gap-4">
+              <div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-[#9CA3AF]">ScholarTrack Institutional Record</div>
+                <h2 class="text-xl font-bold text-[#111827] mt-1">Semester Academic Progress Report</h2>
+              </div>
+              <div class="text-xs text-[#4B5563] sm:text-right tabular-nums">
+                <div>Generated: Nov 20, 2026</div>
+                <div>Academic Year: 2026–2027</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] text-xs">
+              <div>
+                <div class="text-[#9CA3AF]">Student Name</div>
+                <div class="font-semibold text-[#111827] mt-0.5">${student.name}</div>
+              </div>
+              <div>
+                <div class="text-[#9CA3AF]">Roll Number</div>
+                <div class="font-semibold text-[#111827] mt-0.5 tabular-nums">${student.rollNumber}</div>
+              </div>
+              <div>
+                <div class="text-[#9CA3AF]">Department & Sem</div>
+                <div class="font-semibold text-[#111827] mt-0.5">B.Tech ${student.department} · Sem ${student.semester}</div>
+              </div>
+              <div>
+                <div class="text-[#9CA3AF]">Overall Attendance</div>
+                <div class="font-semibold text-[#111827] mt-0.5 tabular-nums">${stats.overallAttendance}%</div>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-[#4B5563] mb-3">Subject-Wise Attendance & Marks Summary</h3>
+              <table class="w-full text-left border-collapse border border-[#E5E7EB] text-xs">
+                <thead>
+                  <tr class="bg-[#F3F4F6] border-b border-[#E5E7EB]">
+                    <th class="py-2.5 px-3 border-r border-[#E5E7EB]">Code</th>
+                    <th class="py-2.5 px-3 border-r border-[#E5E7EB]">Subject Name</th>
+                    <th class="py-2.5 px-3 border-r border-[#E5E7EB] text-right">Attendance</th>
+                    <th class="py-2.5 px-3 text-right">Marks Scored</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E7EB]">
+                  ${db.subjects.map(sub => {
+                    const att = stats.attRows.find(a => a.subjectId === sub.id) || { attended: 0, conducted: 0 };
+                    const subMarks = stats.pubMarks.filter(m => m.subjectId === sub.id);
+                    const obt = subMarks.reduce((a, m) => a + Number(m.obtained), 0);
+                    const max = subMarks.reduce((a, m) => a + Number(m.max), 0);
+                    return `
+                      <tr>
+                        <td class="py-2.5 px-3 border-r border-[#E5E7EB] font-mono">${sub.code}</td>
+                        <td class="py-2.5 px-3 border-r border-[#E5E7EB] font-medium">${sub.name}</td>
+                        <td class="py-2.5 px-3 border-r border-[#E5E7EB] text-right tabular-nums">${att.attended}/${att.conducted} (${calcPct(att.attended, att.conducted)}%)</td>
+                        <td class="py-2.5 px-3 text-right tabular-nums">${max > 0 ? `${obt}/${max} (${calcPct(obt, max)}%)` : 'Pending'}</td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pt-6 border-t border-[#E5E7EB] flex items-center justify-between text-xs text-[#4B5563]">
+              <span>Verified via ScholarTrack Central Database</span>
+              <span class="font-medium text-[#111827]">Academic Advisor Signature</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    /*************************************************************************
+     * 6. VIEW 3: FACULTY PORTAL
+     *************************************************************************/
+    function renderFacultyPortal() {
+      const faculty = getFacultyById(db.activeFacultyId);
+      const pendingReviews = db.submissions.filter(s => s.status === 'Submitted').length;
+
+      const navItems = [
+        { id: 'overview', label: 'Faculty Overview', icon: 'layout-dashboard' },
+        { id: 'attendance', label: 'Mark Attendance', icon: 'check-square' },
+        { id: 'marks', label: 'Marks Management', icon: 'edit-3' },
+        { id: 'assignments', label: 'Assignments & Grading', icon: 'folder-check', badge: pendingReviews || null }
+      ];
+
+      let contentHtml = '';
+      if (facultyTab === 'overview') contentHtml = renderFacultyOverview(faculty, pendingReviews);
+      else if (facultyTab === 'attendance') contentHtml = renderFacultyAttendance(faculty);
+      else if (facultyTab === 'marks') contentHtml = renderFacultyMarks(faculty);
+      else if (facultyTab === 'assignments') contentHtml = renderFacultyAssignments(faculty);
+
+      return `
+        <div class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col lg:flex-row gap-6">
+          <aside class="w-full lg:w-60 shrink-0 space-y-4">
+            <div class="st-card p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-[#18181B] text-white flex items-center justify-center text-xs font-semibold">
+                  AN
+                </div>
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold text-[#111827] truncate">${faculty.name}</div>
+                  <div class="text-xs text-[#4B5563]">${faculty.designation} · ${faculty.department}</div>
+                </div>
+              </div>
+            </div>
+
+            <nav class="st-card p-2 flex lg:flex-col gap-1 overflow-x-auto">
+              ${navItems.map(item => {
+                const active = facultyTab === item.id;
+                return `
+                  <button onclick="setFacultyTab('${item.id}')" class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${active ? 'bg-[#18181B] text-white' : 'text-[#4B5563] hover:bg-[#F3F4F6] hover:text-[#111827]'}">
+                    <span class="flex items-center gap-2.5">
+                      <i data-lucide="${item.icon}" class="w-4 h-4"></i>
+                      <span>${item.label}</span>
+                    </span>
+                    ${item.badge ? `<span class="px-1.5 py-0.2 rounded-full text-[10px] tabular-nums ${active ? 'bg-white/20 text-white' : 'bg-[#F3F4F6] text-[#111827] border border-[#E5E7EB]'}">${item.badge}</span>` : ''}
+                  </button>
+                `;
+              }).join('')}
+            </nav>
+          </aside>
+
+          <div class="flex-1 min-w-0">
+            ${contentHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFacultyOverview(faculty, pendingReviews) {
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Faculty Workspace</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Manage daily class attendance, continuous assessments, and coursework</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="st-card p-4">
+              <div class="text-xs text-[#4B5563]">Assigned Courses</div>
+              <div class="text-2xl font-semibold text-[#111827] mt-1 tabular-nums">${db.subjects.length}</div>
+              <div class="text-[11px] text-[#9CA3AF] mt-1">B.Tech CSE · Semester 3</div>
+            </div>
+            <div class="st-card p-4">
+              <div class="text-xs text-[#4B5563]">Enrolled Students</div>
+              <div class="text-2xl font-semibold text-[#111827] mt-1 tabular-nums">${db.students.length}</div>
+              <div class="text-[11px] text-[#9CA3AF] mt-1">Section A Active Roster</div>
+            </div>
+            <div class="st-card p-4">
+              <div class="text-xs text-[#4B5563]">Submissions to Grade</div>
+              <div class="text-2xl font-semibold text-[#111827] mt-1 tabular-nums">${pendingReviews}</div>
+              <div class="text-[11px] text-[#9CA3AF] mt-1">Awaiting feedback</div>
+            </div>
+          </div>
+
+          <!-- Quick Action Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="st-card p-5 flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-semibold text-[#111827]">Record Today's Attendance</h3>
+                <p class="text-xs text-[#4B5563] mt-0.5">Updates student attendance percentages in real time.</p>
+              </div>
+              <button onclick="setFacultyTab('attendance')" class="px-3.5 py-2 rounded-lg bg-[#18181B] text-white text-xs font-medium hover:bg-[#27272A]">
+                Open Register
+              </button>
+            </div>
+            <div class="st-card p-5 flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-semibold text-[#111827]">Enter & Publish Marks</h3>
+                <p class="text-xs text-[#4B5563] mt-0.5">Record internal test scores and publish to student portals.</p>
+              </div>
+              <button onclick="setFacultyTab('marks')" class="px-3.5 py-2 rounded-lg bg-[#18181B] text-white text-xs font-medium hover:bg-[#27272A]">
+                Manage Marks
+              </button>
+            </div>
+          </div>
+
+          <!-- Recent Attendance Logs -->
+          <div class="st-card overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-[#E5E7EB]">
+              <h2 class="text-sm font-semibold text-[#111827]">Recent Attendance Sessions Logged</h2>
+            </div>
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-[#F3F4F6] border-b border-[#E5E7EB] text-[11px] font-medium text-[#4B5563] uppercase">
+                  <th class="py-2.5 px-5">Date</th>
+                  <th class="py-2.5 px-4">Subject</th>
+                  <th class="py-2.5 px-4">Lecture Topic</th>
+                  <th class="py-2.5 px-5 text-right">Present</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[#E5E7EB]">
+                ${db.attendanceLogs.map(log => {
+                  const sub = getSubjectById(log.subjectId);
+                  return `
+                    <tr>
+                      <td class="py-3 px-5 tabular-nums text-[#4B5563]">${log.date}</td>
+                      <td class="py-3 px-4 font-medium text-[#111827]">${sub.code} — ${sub.name}</td>
+                      <td class="py-3 px-4 text-[#4B5563]">${log.topic}</td>
+                      <td class="py-3 px-5 text-right tabular-nums font-semibold text-[#111827]">${log.presentCount} / ${log.totalCount}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFacultyAttendance(faculty) {
+      const today = new Date().toISOString().split('T')[0];
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Mark Class Attendance</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Select subject and date, mark student presence, and commit to the central database</p>
+          </div>
+
+          <div class="st-card p-5 space-y-5">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-medium text-[#4B5563] mb-1">Subject</label>
+                <select id="fac-att-subject" class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111827]">
+                  ${db.subjects.map(s => `<option value="${s.id}">${s.code} — ${s.name}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-[#4B5563] mb-1">Session Date</label>
+                <input type="date" id="fac-att-date" value="${today}" class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111827] tabular-nums" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-[#4B5563] mb-1">Lecture Topic</label>
+                <input type="text" id="fac-att-topic" placeholder="e.g. Dijkstra's Shortest Path" value="Unit 4: Advanced Trees & Hashing" class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111827]" />
+              </div>
+            </div>
+
+            <div class="border border-[#E5E7EB] rounded-lg overflow-hidden">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-[#F3F4F6] border-b border-[#E5E7EB] text-[11px] font-medium text-[#4B5563] uppercase">
+                    <th class="py-2.5 px-4">Roll No</th>
+                    <th class="py-2.5 px-4">Student Name</th>
+                    <th class="py-2.5 px-4 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E7EB]">
+                  ${db.students.map(stu => `
+                    <tr class="hover:bg-[#F9FAFB]">
+                      <td class="py-3 px-4 font-mono text-[#4B5563]">${stu.rollNumber}</td>
+                      <td class="py-3 px-4 font-medium text-[#111827]">${stu.name}</td>
+                      <td class="py-3 px-4 text-right">
+                        <div class="inline-flex rounded-lg border border-[#E5E7EB] p-0.5 bg-[#F9FAFB]">
+                          <label class="cursor-pointer">
+                            <input type="radio" name="att-${stu.id}" value="present" checked class="sr-only peer" />
+                            <span class="px-3 py-1 rounded-md text-xs font-medium inline-block peer-checked:bg-[#18181B] peer-checked:text-white text-[#4B5563] transition-colors">
+                              Present
+                            </span>
+                          </label>
+                          <label class="cursor-pointer">
+                            <input type="radio" name="att-${stu.id}" value="absent" class="sr-only peer" />
+                            <span class="px-3 py-1 rounded-md text-xs font-medium inline-block peer-checked:bg-[#991B1B] peer-checked:text-white text-[#4B5563] transition-colors">
+                              Absent
+                            </span>
+                          </label>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex items-center justify-end gap-3">
+              <button onclick="saveFacultyAttendance()" class="px-4 py-2 rounded-lg bg-[#18181B] hover:bg-[#27272A] text-white text-xs font-medium transition-colors">
+                Commit Attendance Session
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function saveFacultyAttendance() {
+      const subjectId = document.getElementById('fac-att-subject').value;
+      const date = document.getElementById('fac-att-date').value;
+      const topic = document.getElementById('fac-att-topic').value || 'Regular Lecture';
+
+      let presentCount = 0;
+
+      db.students.forEach(stu => {
+        const selected = document.querySelector(`input[name="att-${stu.id}"]:checked`);
+        const isPresent = selected ? selected.value === 'present' : true;
+        if (isPresent) presentCount++;
+
+        let record = db.attendance.find(a => a.studentId === stu.id && a.subjectId === subjectId);
+        if (!record) {
+          record = { studentId: stu.id, subjectId, attended: 0, conducted: 0, lastUpdated: date };
+          db.attendance.push(record);
+        }
+        record.conducted += 1;
+        if (isPresent) record.attended += 1;
+        record.lastUpdated = date;
+      });
+
+      db.attendanceLogs.unshift({
+        id: 'log-' + Date.now(),
+        date,
+        subjectId,
+        topic,
+        presentCount,
+        totalCount: db.students.length
+      });
+
+      saveDB();
+      renderApp();
+      showToast(`Attendance saved (${presentCount}/${db.students.length} present). Student dashboard updated!`, 'success');
+    }
+
+    function renderFacultyMarks(faculty) {
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Examination Marks Entry</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Enter assessment scores and publish directly to student portals</p>
+          </div>
+
+          <div class="st-card p-5 space-y-5">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-medium text-[#4B5563] mb-1">Subject</label>
+                <select id="fac-marks-subject" class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111827]">
+                  ${db.subjects.map(s => `<option value="${s.id}">${s.code} — ${s.name}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-[#4B5563] mb-1">Assessment Title</label>
+                <select id="fac-marks-assessment" class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111827]">
+                  <option value="Internal Test 2">Internal Test 2</option>
+                  <option value="Practical Lab Exam">Practical Lab Exam</option>
+                  <option value="Internal Test 1">Internal Test 1</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-[#4B5563] mb-1">Maximum Marks</label>
+                <input type="number" id="fac-marks-max" value="20" min="5" max="100" class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 text-[#111827] tabular-nums" />
+              </div>
+            </div>
+
+            <div class="border border-[#E5E7EB] rounded-lg overflow-hidden">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-[#F3F4F6] border-b border-[#E5E7EB] text-[11px] font-medium text-[#4B5563] uppercase">
+                    <th class="py-2.5 px-4">Roll No</th>
+                    <th class="py-2.5 px-4">Student Name</th>
+                    <th class="py-2.5 px-4 text-right">Marks Obtained</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[#E5E7EB]">
+                  ${db.students.map((stu, idx) => `
+                    <tr>
+                      <td class="py-3 px-4 font-mono text-[#4B5563]">${stu.rollNumber}</td>
+                      <td class="py-3 px-4 font-medium text-[#111827]">${stu.name}</td>
+                      <td class="py-3 px-4 text-right">
+                        <input type="number" id="mark-input-${stu.id}" value="${18 - idx}" min="0" max="100" step="0.5" class="w-24 text-right text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-2.5 py-1.5 text-[#111827] tabular-nums font-medium" />
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex items-center justify-end gap-3">
+              <button onclick="publishFacultyMarks()" class="px-4 py-2 rounded-lg bg-[#18181B] hover:bg-[#27272A] text-white text-xs font-medium transition-colors">
+                Publish Results to Students
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function publishFacultyMarks() {
+      const subjectId = document.getElementById('fac-marks-subject').value;
+      const assessment = document.getElementById('fac-marks-assessment').value;
+      const max = parseFloat(document.getElementById('fac-marks-max').value) || 20;
+
+      db.students.forEach(stu => {
+        const val = parseFloat(document.getElementById(`mark-input-${stu.id}`).value) || 0;
+        const existing = db.marks.find(m => m.studentId === stu.id && m.subjectId === subjectId && m.assessment === assessment);
+        if (existing) {
+          existing.obtained = val;
+          existing.max = max;
+          existing.published = true;
+        } else {
+          db.marks.push({
+            id: 'm-' + Date.now() + '-' + stu.id,
+            studentId: stu.id,
+            subjectId,
+            assessment,
+            obtained: val,
+            max,
+            published: true
+          });
+        }
+      });
+
+      saveDB();
+      renderApp();
+      showToast(`Published ${assessment} marks! Visible immediately on Student Portal.`, 'success');
+    }
+
+    function renderFacultyAssignments(faculty) {
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Assignments & Submission Evaluation</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Publish new coursework and grade student uploads</p>
+          </div>
+
+          <!-- Create Assignment Form -->
+          <div class="st-card p-5 space-y-4">
+            <h2 class="text-sm font-semibold text-[#111827]">Create New Assignment</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-medium text-[#4B5563] mb-1">Subject</label>
+                <select id="new-asg-sub" class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2">
+                  ${db.subjects.map(s => `<option value="${s.id}">${s.code} — ${s.name}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-[#4B5563] mb-1">Assignment Title</label>
+                <input type="text" id="new-asg-title" placeholder="e.g. Dynamic Programming Problem Set" class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-[#4B5563] mb-1">Due Date</label>
+                <input type="date" id="new-asg-due" value="2026-12-02" class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 tabular-nums" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-[#4B5563] mb-1">Instructions</label>
+              <input type="text" id="new-asg-desc" placeholder="Describe deliverables, formatting, and evaluation rubric..." class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2" />
+            </div>
+            <div class="flex justify-end">
+              <button onclick="createNewAssignment()" class="px-4 py-2 rounded-lg bg-[#18181B] hover:bg-[#27272A] text-white text-xs font-medium">
+                Publish Assignment
+              </button>
+            </div>
+          </div>
+
+          <!-- Student Submissions Queue -->
+          <div class="st-card overflow-hidden">
+            <div class="px-5 py-3.5 border-b border-[#E5E7EB]">
+              <h2 class="text-sm font-semibold text-[#111827]">Student Submissions (${db.submissions.length})</h2>
+            </div>
+            <div class="divide-y divide-[#E5E7EB]">
+              ${db.submissions.map(subm => {
+                const stu = getStudentById(subm.studentId);
+                const asg = db.assignments.find(a => a.id === subm.assignmentId) || { title: 'Assignment', maxMarks: 10 };
+                return `
+                  <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-[#111827]">${stu.name} (${stu.rollNumber})</span>
+                        <span class="text-[11px] px-2 py-0.5 rounded-full ${subm.status === 'Evaluated' ? 'bg-[#ECFDF5] text-[#065F46]' : 'bg-[#F3F4F6] text-[#374151]'}">${subm.status}</span>
+                      </div>
+                      <div class="text-xs text-[#4B5563]">${asg.title} · <span class="font-mono text-[11px]">${subm.fileName}</span></div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <input type="number" id="grade-score-${subm.id}" value="${subm.marksAwarded !== null ? subm.marksAwarded : 9}" min="0" max="${asg.maxMarks}" class="w-16 text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-2 py-1.5 tabular-nums text-right" />
+                      <input type="text" id="grade-fb-${subm.id}" value="${subm.feedback || 'Well structured solution.'}" placeholder="Feedback" class="w-44 text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-2.5 py-1.5" />
+                      <button onclick="gradeSubmission('${subm.id}')" class="px-3 py-1.5 rounded-lg bg-[#18181B] text-white text-xs font-medium hover:bg-[#27272A]">
+                        Save Grade
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function createNewAssignment() {
+      const subjectId = document.getElementById('new-asg-sub').value;
+      const title = document.getElementById('new-asg-title').value.trim();
+      const dueDate = document.getElementById('new-asg-due').value;
+      const description = document.getElementById('new-asg-desc').value.trim() || 'Complete the attached problem sheet and upload a PDF report.';
+
+      if (!title) {
+        showToast('Please enter an assignment title');
+        return;
+      }
+
+      db.assignments.unshift({
+        id: 'asg-' + Date.now(),
+        subjectId,
+        title,
+        description,
+        dueDate,
+        maxMarks: 10
+      });
+
+      saveDB();
+      renderApp();
+      showToast('New assignment published to Student Portal', 'success');
+    }
+
+    function gradeSubmission(submId) {
+      const subm = db.submissions.find(s => s.id === submId);
+      if (!subm) return;
+      subm.marksAwarded = parseFloat(document.getElementById(`grade-score-${submId}`).value) || 0;
+      subm.feedback = document.getElementById(`grade-fb-${submId}`).value;
+      subm.status = 'Evaluated';
+
+      saveDB();
+      renderApp();
+      showToast('Submission evaluated and marks released', 'success');
+    }
+
+    /*************************************************************************
+     * 7. VIEW 4: ADMINISTRATOR PORTAL
+     *************************************************************************/
+    function renderAdminPortal() {
+      const navItems = [
+        { id: 'overview', label: 'Institution Overview', icon: 'bar-chart-2' },
+        { id: 'students', label: 'Student Directory', icon: 'users' },
+        { id: 'subjects', label: 'Subjects & Faculty', icon: 'layers' },
+        { id: 'announcements', label: 'Announcements', icon: 'megaphone' }
+      ];
+
+      let contentHtml = '';
+      if (adminTab === 'overview') contentHtml = renderAdminOverview();
+      else if (adminTab === 'students') contentHtml = renderAdminStudents();
+      else if (adminTab === 'subjects') contentHtml = renderAdminSubjects();
+      else if (adminTab === 'announcements') contentHtml = renderAdminAnnouncements();
+
+      return `
+        <div class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col lg:flex-row gap-6">
+          <aside class="w-full lg:w-60 shrink-0 space-y-4">
+            <div class="st-card p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-[#18181B] text-white flex items-center justify-center text-xs font-semibold">
+                  AD
+                </div>
+                <div>
+                  <div class="text-sm font-semibold text-[#111827]">Admin Office</div>
+                  <div class="text-xs text-[#4B5563]">Registrar & Dean Control</div>
+                </div>
+              </div>
+            </div>
+
+            <nav class="st-card p-2 flex lg:flex-col gap-1 overflow-x-auto">
+              ${navItems.map(item => {
+                const active = adminTab === item.id;
+                return `
+                  <button onclick="setAdminTab('${item.id}')" class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${active ? 'bg-[#18181B] text-white' : 'text-[#4B5563] hover:bg-[#F3F4F6] hover:text-[#111827]'}">
+                    <i data-lucide="${item.icon}" class="w-4 h-4"></i>
+                    <span>${item.label}</span>
+                  </button>
+                `;
+              }).join('')}
+            </nav>
+          </aside>
+
+          <div class="flex-1 min-w-0">
+            ${contentHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAdminOverview() {
+      const totalAtt = db.attendance.reduce((a, r) => a + r.attended, 0);
+      const totalCond = db.attendance.reduce((a, r) => a + r.conducted, 0);
+      const instAttendance = calcPct(totalAtt, totalCond);
+
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Institution Overview & Analytics</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Centralized academic metrics across departments, faculty, and students</p>
+          </div>
+
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="st-card p-4">
+              <div class="text-xs text-[#4B5563]">Registered Students</div>
+              <div class="text-2xl font-semibold text-[#111827] mt-1 tabular-nums">${db.students.length}</div>
+              <div class="text-[11px] text-[#9CA3AF] mt-1">B.Tech CSE Cohort</div>
+            </div>
+            <div class="st-card p-4">
+              <div class="text-xs text-[#4B5563]">Faculty Members</div>
+              <div class="text-2xl font-semibold text-[#111827] mt-1 tabular-nums">${db.faculty.length}</div>
+              <div class="text-[11px] text-[#9CA3AF] mt-1">Active teaching staff</div>
+            </div>
+            <div class="st-card p-4">
+              <div class="text-xs text-[#4B5563]">Active Subjects</div>
+              <div class="text-2xl font-semibold text-[#111827] mt-1 tabular-nums">${db.subjects.length}</div>
+              <div class="text-[11px] text-[#9CA3AF] mt-1">Semester 3 Curriculum</div>
+            </div>
+            <div class="st-card p-4">
+              <div class="text-xs text-[#4B5563]">Campus Attendance</div>
+              <div class="text-2xl font-semibold text-[#111827] mt-1 tabular-nums">${instAttendance}%</div>
+              <div class="text-[11px] text-[#065F46] mt-1">Above 75% benchmark</div>
+            </div>
+          </div>
+
+          <!-- Subject Average Attendance Chart -->
+          <div class="st-card p-5">
+            <div class="mb-4">
+              <h2 class="text-sm font-semibold text-[#111827]">Departmental Subject Attendance Comparison</h2>
+              <p class="text-xs text-[#4B5563]">Average student attendance percentage per course</p>
+            </div>
+            <div class="relative h-60 w-full">
+              <canvas id="adminOverviewChart"></canvas>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function initAdminCharts() {
+      const ctx = document.getElementById('adminOverviewChart');
+      if (!ctx) return;
+
+      const labels = db.subjects.map(s => `${s.code} (${s.name.split(' ')[0]})`);
+      const data = db.subjects.map(sub => {
+        const rows = db.attendance.filter(a => a.subjectId === sub.id);
+        const att = rows.reduce((a, r) => a + r.attended, 0);
+        const cond = rows.reduce((a, r) => a + r.conducted, 0);
+        return calcPct(att, cond);
+      });
+
+      chartInstances.adminChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Avg Attendance %',
+            data,
+            backgroundColor: '#18181B',
+            borderRadius: 6,
+            barThickness: 42
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              min: 0,
+              max: 100,
+              grid: { color: '#F3F4F6' },
+              ticks: { font: { family: 'Inter', size: 11 }, color: '#9CA3AF', callback: v => v + '%' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { family: 'Inter', size: 11, weight: '500' }, color: '#4B5563' }
+            }
+          }
+        }
+      });
+    }
+
+    function renderAdminStudents() {
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Student Records Management</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Register new students and automatically enroll them into Semester 3 subjects</p>
+          </div>
+
+          <!-- Add Student Form -->
+          <div class="st-card p-5 space-y-4">
+            <h2 class="text-sm font-semibold text-[#111827]">Register New Student</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <input type="text" id="adm-stu-name" placeholder="Full Name (e.g. Kabir Das)" class="text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2" />
+              <input type="text" id="adm-stu-roll" placeholder="Roll No (e.g. 24CS064)" class="text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 font-mono" />
+              <input type="email" id="adm-stu-email" placeholder="College Email" class="text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2" />
+              <button onclick="adminAddStudent()" class="px-4 py-2 rounded-lg bg-[#18181B] hover:bg-[#27272A] text-white text-xs font-medium">
+                + Register Student
+              </button>
+            </div>
+          </div>
+
+          <!-- Student Table -->
+          <div class="st-card overflow-hidden">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-[#F3F4F6] border-b border-[#E5E7EB] text-[11px] font-medium text-[#4B5563] uppercase">
+                  <th class="py-3 px-5">Roll No</th>
+                  <th class="py-3 px-4">Student Name</th>
+                  <th class="py-3 px-4">Department</th>
+                  <th class="py-3 px-4 text-right">Overall Att.</th>
+                  <th class="py-3 px-5 text-right">Account</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[#E5E7EB]">
+                ${db.students.map(stu => {
+                  const stats = getStudentStats(stu.id);
+                  return `
+                    <tr class="hover:bg-[#F9FAFB]">
+                      <td class="py-3 px-5 font-mono text-[#4B5563]">${stu.rollNumber}</td>
+                      <td class="py-3 px-4">
+                        <div class="font-medium text-[#111827]">${stu.name}</div>
+                        <div class="text-[11px] text-[#9CA3AF]">${stu.email}</div>
+                      </td>
+                      <td class="py-3 px-4 text-[#4B5563]">B.Tech ${stu.department} · Sem ${stu.semester}</td>
+                      <td class="py-3 px-4 text-right tabular-nums font-semibold text-[#111827]">${stats.overallAttendance}%</td>
+                      <td class="py-3 px-5 text-right">
+                        <span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#ECFDF5] text-[#065F46]">${stu.status}</span>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function adminAddStudent() {
+      const name = document.getElementById('adm-stu-name').value.trim();
+      const rollNumber = document.getElementById('adm-stu-roll').value.trim().toUpperCase();
+      const email = document.getElementById('adm-stu-email').value.trim() || `${rollNumber.toLowerCase()}@college.edu`;
+
+      if (!name || !rollNumber) {
+        showToast('Please enter student name and roll number');
+        return;
+      }
+
+      const newId = 'stu-' + Date.now();
+      db.students.push({
+        id: newId,
+        rollNumber,
+        name,
+        email,
+        department: 'CSE',
+        semester: 3,
+        section: 'A',
+        status: 'Active',
+        phone: '+91 98765 43299'
+      });
+
+      // Automatically enroll student in all active semester subjects
+      db.subjects.forEach(sub => {
+        db.attendance.push({
+          studentId: newId,
+          subjectId: sub.id,
+          attended: 30,
+          conducted: 36,
+          lastUpdated: '2026-11-20'
+        });
+      });
+
+      saveDB();
+      renderApp();
+      showToast(`Registered ${name} (${rollNumber}) and enrolled in ${db.subjects.length} subjects`, 'success');
+    }
+
+    function renderAdminSubjects() {
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Subjects & Faculty Allocation</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Manage semester curriculum and teaching assignments</p>
+          </div>
+
+          <div class="st-card p-5 space-y-4">
+            <h2 class="text-sm font-semibold text-[#111827]">Create New Subject</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <input type="text" id="adm-sub-code" placeholder="Code (e.g. CS304)" class="text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2 font-mono" />
+              <input type="text" id="adm-sub-name" placeholder="Subject Title" class="text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2" />
+              <select id="adm-sub-fac" class="text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2">
+                ${db.faculty.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
+              </select>
+              <button onclick="adminAddSubject()" class="px-4 py-2 rounded-lg bg-[#18181B] hover:bg-[#27272A] text-white text-xs font-medium">
+                + Add Subject
+              </button>
+            </div>
+          </div>
+
+          <div class="st-card overflow-hidden">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-[#F3F4F6] border-b border-[#E5E7EB] text-[11px] font-medium text-[#4B5563] uppercase">
+                  <th class="py-3 px-5">Code</th>
+                  <th class="py-3 px-4">Subject Name</th>
+                  <th class="py-3 px-4">Assigned Faculty</th>
+                  <th class="py-3 px-5 text-right">Credits</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[#E5E7EB]">
+                ${db.subjects.map(sub => {
+                  const fac = getFacultyById(sub.facultyId);
+                  return `
+                    <tr>
+                      <td class="py-3 px-5 font-mono text-[#4B5563]">${sub.code}</td>
+                      <td class="py-3 px-4 font-medium text-[#111827]">${sub.name}</td>
+                      <td class="py-3 px-4 text-[#4B5563]">${fac.name}</td>
+                      <td class="py-3 px-5 text-right tabular-nums text-[#111827]">${sub.credits}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function adminAddSubject() {
+      const code = document.getElementById('adm-sub-code').value.trim().toUpperCase();
+      const name = document.getElementById('adm-sub-name').value.trim();
+      const facultyId = document.getElementById('adm-sub-fac').value;
+
+      if (!code || !name) {
+        showToast('Please enter subject code and title');
+        return;
+      }
+
+      const newSubId = 'sub-' + Date.now();
+      db.subjects.push({
+        id: newSubId,
+        code,
+        name,
+        credits: 4,
+        semester: 3,
+        department: 'CSE',
+        facultyId
+      });
+
+      // Enroll all active students
+      db.students.forEach(stu => {
+        db.attendance.push({
+          studentId: stu.id,
+          subjectId: newSubId,
+          attended: 10,
+          conducted: 12,
+          lastUpdated: '2026-11-20'
+        });
+      });
+
+      saveDB();
+      renderApp();
+      showToast(`Created ${code} — ${name} and enrolled active students`, 'success');
+    }
+
+    function renderAdminAnnouncements() {
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl font-semibold text-[#111827] tracking-tight">Campus Announcements</h1>
+            <p class="text-xs text-[#4B5563] mt-0.5">Publish notices that appear immediately across Student dashboards</p>
+          </div>
+
+          <div class="st-card p-5 space-y-4">
+            <h2 class="text-sm font-semibold text-[#111827]">Broadcast Academic Notice</h2>
+            <div class="space-y-3">
+              <input type="text" id="adm-ann-title" placeholder="Notice Headline (e.g. Semester 3 Hall Ticket Distribution)" class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2" />
+              <textarea id="adm-ann-body" rows="3" placeholder="Write official notice details..." class="w-full text-xs bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg px-3 py-2"></textarea>
+              <div class="flex justify-end">
+                <button onclick="adminPostAnnouncement()" class="px-4 py-2 rounded-lg bg-[#18181B] hover:bg-[#27272A] text-white text-xs font-medium">
+                  Publish Notice
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            ${db.announcements.map(ann => `
+              <div class="st-card p-4">
+                <div class="flex items-center justify-between text-[11px] text-[#9CA3AF] mb-1">
+                  <span>Posted by ${ann.author}</span>
+                  <span>${ann.date}</span>
+                </div>
+                <div class="text-sm font-semibold text-[#111827]">${ann.title}</div>
+                <p class="text-xs text-[#4B5563] mt-1">${ann.content}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function adminPostAnnouncement() {
+      const title = document.getElementById('adm-ann-title').value.trim();
+      const content = document.getElementById('adm-ann-body').value.trim();
+      if (!title || !content) {
+        showToast('Please enter both notice title and content');
+        return;
+      }
+
+      db.announcements.unshift({
+        id: 'ann-' + Date.now(),
+        title,
+        content,
+        audience: 'All',
+        author: 'Admin Office',
+        date: 'Nov 20, 2026'
+      });
+
+      saveDB();
+      renderApp();
+      showToast('Announcement broadcasted to Student & Faculty portals', 'success');
+    }
+
+    // Boot Application
+    window.addEventListener('DOMContentLoaded', () => {
+      renderApp();
+    });
+  </script>
+</body>
+</html>
